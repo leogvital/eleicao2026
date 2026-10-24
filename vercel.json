@@ -1,0 +1,9 @@
+{
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/oficial/ele2026/:path*", "destination": "/api/tse?p=:path*" }
+  ],
+  "functions": {
+    "api/tse.js": { "maxDuration": 15 }
+  }
+}

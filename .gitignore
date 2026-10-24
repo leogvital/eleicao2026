@@ -1,0 +1,9 @@
+node_modules/
+.vercel/
+.env*
+*.zip
+*.log
+
+# versão antiga (favorito/bookmarklet), substituída por este painel
+dashboard-tse-console.js
+Instalar-Dashboard-Apuracao.html

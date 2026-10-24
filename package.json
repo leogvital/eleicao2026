@@ -1,0 +1,12 @@
+{
+  "name": "eleicao2026",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Painel de apuração das Eleições 2026 (Presidente, Governador, Senador e Deputados) com dados públicos do TSE",
+  "scripts": {
+    "start": "node servidor.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
