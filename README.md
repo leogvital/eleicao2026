@@ -50,7 +50,7 @@ nginx -t && systemctl reload nginx
 
 Atualizar: `cd /var/eleicao2026 && git pull && pm2 restart eleicao2026`.
 
-**Cloudflare / DNS.** O nginx só atende pelo nome em `server_name` (hoje `eleicao2026.ddns.net`); para outro nome, acrescente-o nos dois blocos. A Cloudflare só faz proxy de nomes que estão em uma zona dela: `*.ddns.net` pertence ao No-IP e não pode ser proxied. Use um nome do seu domínio na Cloudflare (registro **A** para o IP do servidor, ou **CNAME** para o nome do No-IP, com a nuvem laranja) e cadastre esse nome em `server_name`. O bloco 443 usa certificado auto-assinado temporário: com a Cloudflare em **Full** funciona; para **Full (strict)** emita um certificado válido (`certbot certonly --webroot -w /var/eleicao2026/certbot-webroot -d <nome>`) ou use um Origin Certificate da Cloudflare.
+**Cloudflare / DNS.** O nginx só atende pelo nome em `server_name` (hoje `eleicao2026.ddns.net`); para outro nome, acrescente-o nos dois blocos. A Cloudflare só faz proxy de nomes que estão em uma zona dela: `*.ddns.net` pertence ao No-IP e não pode ser proxied. Use um nome do seu domínio na Cloudflare (registro **A** para o IP do servidor, ou **CNAME** para o nome do No-IP, com a nuvem laranja) e cadastre esse nome em `server_name`. O bloco 443 usa o certificado Let's Encrypt de `eleicao2026.ddns.net` (emitido com `certbot certonly --webroot -w /var/eleicao2026/certbot-webroot -d <nome> --deploy-hook "systemctl reload nginx"`, renovação automática pelo `certbot.timer`). Ele vale para a Cloudflare em **Full (strict)** quando o nome acessado é o do certificado; para outro nome, emita um certificado para ele ou use um Origin Certificate da Cloudflare.
 
 ## Rodar no computador
 
