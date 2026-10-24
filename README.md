@@ -34,6 +34,24 @@ Ou pela linha de comando: `vercel login` e depois `vercel --prod` na pasta do pr
 
 **Cache e limites do Hobby.** A função responde com `Cache-Control: s-maxage=15`, e o painel usa um parâmetro que muda a cada 15 s. Assim todos os visitantes dividem a mesma resposta no CDN: a quantidade de chamadas à função e ao TSE não cresce com o número de pessoas, e o dado chega com no máximo ~15 s de atraso. A lista de municípios é cacheada por 1 hora. A função só aceita caminhos de arquivos `.json`/`.jws` do TSE (não é um proxy aberto). O plano Hobby é de uso pessoal e não comercial.
 
+## Servidor próprio (Linux + nginx + PM2), atrás da Cloudflare
+
+Instalação usada em produção (`/var/www/eleicao2026`, processo PM2 `eleicao2026` em `127.0.0.1:3030`):
+
+```bash
+git clone https://github.com/leogvital/eleicao2026.git /var/www/eleicao2026
+cd /var/www/eleicao2026 && pm2 start ecosystem.config.cjs && pm2 save
+cp deploy/nginx-eleicao2026.conf /etc/nginx/sites-available/eleicao2026
+cp deploy/nginx-eleicao2026-proxy.conf /etc/nginx/snippets/eleicao2026-proxy.conf
+# carregue por ÚLTIMO (nome com zz-) para não virar o servidor padrão do nginx:
+ln -s /etc/nginx/sites-available/eleicao2026 /etc/nginx/sites-enabled/zz-eleicao2026
+nginx -t && systemctl reload nginx
+```
+
+Atualizar: `cd /var/www/eleicao2026 && git pull && pm2 restart eleicao2026`.
+
+**Cloudflare / DNS.** O nginx só atende pelo nome em `server_name` (hoje `eleicao2026.ddns.net`); para outro nome, acrescente-o nos dois blocos. A Cloudflare só faz proxy de nomes que estão em uma zona dela: `*.ddns.net` pertence ao No-IP e não pode ser proxied. Use um nome do seu domínio na Cloudflare (registro **A** para o IP do servidor, ou **CNAME** para o nome do No-IP, com a nuvem laranja) e cadastre esse nome em `server_name`. O bloco 443 usa certificado auto-assinado temporário: com a Cloudflare em **Full** funciona; para **Full (strict)** emita um certificado válido (`certbot certonly --webroot -w /var/www/eleicao2026/certbot-webroot -d <nome>`) ou use um Origin Certificate da Cloudflare.
+
 ## Rodar no computador
 
 Windows: dê dois cliques em [`Iniciar-Dashboard.bat`](Iniciar-Dashboard.bat). Ele instala o Node.js (via winget) se necessário, encerra execuções anteriores e abre `http://localhost:8080`.
