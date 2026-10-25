@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Apuração 2026 - Brasil e Minas</title>
+<title>Apuração 2026 - Brasil e estados</title>
 <style>
   :root{--bg:#0f1420;--card:#171e2e;--line:#27304a;--tx:#e8ecf5;--mut:#8b96b3;--ac:#4ade80;--warn:#fbbf24;--err:#f87171;--bar:#3b82f6}
   *{box-sizing:border-box}
@@ -111,7 +111,7 @@
 </head>
 <body>
 <header>
-  <h1>Apuração 2026 &middot; Brasil e Minas Gerais <span class="tag w" id="turnoTag" hidden>2º turno</span></h1>
+  <h1>Apuração 2026 &middot; Brasil e estados <span class="tag w" id="turnoTag" hidden>2º turno</span></h1>
   <div class="tabs"><button id="tab-ap" class="on">Apuração</button><button id="tab-cp">Comparativo UF / Cidades</button><button id="tab-dq">Duelo presidencial</button><button id="tab-pf">&#9733; Perfis salvos</button></div>
   <div class="ctrl">
     <label>Turno <select id="turno"><option value="1">1º turno</option><option value="2">2º turno</option></select></label>
@@ -126,6 +126,7 @@
   </div>
 </header>
 <div id="view-ap">
+<div class="ctl" style="padding:14px 20px 0;margin:0"><label>Estado (Presidente) <select id="ufap"><option value="ac">AC - Acre</option><option value="al">AL - Alagoas</option><option value="ap">AP - Amapá</option><option value="am">AM - Amazonas</option><option value="ba">BA - Bahia</option><option value="ce">CE - Ceará</option><option value="df">DF - Distrito Federal</option><option value="es">ES - Espírito Santo</option><option value="go">GO - Goiás</option><option value="ma">MA - Maranhão</option><option value="mt">MT - Mato Grosso</option><option value="ms">MS - Mato Grosso do Sul</option><option value="mg">MG - Minas Gerais</option><option value="pa">PA - Pará</option><option value="pb">PB - Paraíba</option><option value="pr">PR - Paraná</option><option value="pe">PE - Pernambuco</option><option value="pi">PI - Piauí</option><option value="rj">RJ - Rio de Janeiro</option><option value="rn">RN - Rio Grande do Norte</option><option value="rs">RS - Rio Grande do Sul</option><option value="ro">RO - Rondônia</option><option value="rr">RR - Roraima</option><option value="sc">SC - Santa Catarina</option><option value="sp">SP - São Paulo</option><option value="se">SE - Sergipe</option><option value="to">TO - Tocantins</option><option value="zz">ZZ - Exterior</option></select></label><span>Escolha o estado para acompanhar o Presidente. No 2º turno esta aba mostra só o Presidente.</span></div>
 <div class="resumo" id="resumo"></div>
 <div class="grid" id="grid"></div>
 </div>
@@ -197,6 +198,15 @@ const CARDS = [
   {id:"df",     titulo:"Deputado Federal - Minas Gerais (53 vagas)", ele:"6259", uf:"mg", cargo:6, top:15},
   {id:"de",     titulo:"Deputado Estadual - Minas Gerais (77 vagas)", ele:"6259", uf:"mg", cargo:7, top:15},
 ];
+
+// ===== Estado escolhido na aba Apuracao (Presidente): o card "presmg" e o 2o quadro de urnas seguem este seletor =====
+const UF_AP = {"ac":"Acre","al":"Alagoas","ap":"Amapá","am":"Amazonas","ba":"Bahia","ce":"Ceará","df":"Distrito Federal","es":"Espírito Santo","go":"Goiás","ma":"Maranhão","mt":"Mato Grosso","ms":"Mato Grosso do Sul","mg":"Minas Gerais","pa":"Pará","pb":"Paraíba","pr":"Paraná","pe":"Pernambuco","pi":"Piauí","rj":"Rio de Janeiro","rn":"Rio Grande do Norte","rs":"Rio Grande do Sul","ro":"Rondônia","rr":"Roraima","sc":"Santa Catarina","sp":"São Paulo","se":"Sergipe","to":"Tocantins","zz":"Exterior"};
+let ufAp = "mg"; try { const v = localStorage.getItem("ufap2026"); if (v && UF_AP[v]) ufAp = v; } catch (e) {}
+const cardUf = CARDS.find(c => c.id === "presmg");
+function aplicaUfAp() { cardUf.uf = ufAp; cardUf.titulo = "Presidente da República - " + UF_AP[ufAp]; }
+aplicaUfAp();
+// No 2o turno so o Presidente aparece na aba Apuracao
+const cardVisivel = (c) => turno === 1 || c.cargo === 1;
 
 // ===== Turno (1 ou 2): no 2o turno o TSE usa outro codigo de eleicao e so existem Presidente e Governador =====
 // Padrao ao abrir: 2o turno. A troca pelo seletor vale so enquanto a aba estiver aberta (sessionStorage): ao abrir de novo volta ao 2o turno.
@@ -303,6 +313,8 @@ CARDS.forEach(c => { const el = document.createElement("section"); el.className 
 
 function render(c) {
   const el = document.getElementById("card-" + c.id);
+  el.hidden = !cardVisivel(c);
+  if (el.hidden) return;
   const s = estado[c.id] || {};
   let html = `<h2>${esc(c.titulo)}${sufTurno()}</h2>`;
   if (s.nota) html += `<div class="vt">${esc(s.nota)}</div>`;
@@ -328,6 +340,7 @@ function render(c) {
 }
 
 async function carrega(c) {
+  if (!cardVisivel(c)) return;
   if (!temTurno(c.cargo)) { estado[c.id] = { nota: SEM_2T }; render(c); return; }
   try {
     const r = await fetch(url(c), { cache: "no-store" });
@@ -343,7 +356,7 @@ async function carrega(c) {
 }
 
 function renderResumo() {
-  const itens = [["Brasil", "pres"], ["Minas Gerais", "presmg"]];
+  const itens = [["Brasil", "pres"], [UF_AP[ufAp], "presmg"]];
   document.getElementById("resumo").innerHTML = itens.map(([nome, id]) => {
     const d = (estado[id] || {}).dados;
     if (!d) return `<section class="card"><h2>Urnas apuradas - ${nome}</h2><div class="vt">Carregando...</div></section>`;
@@ -375,6 +388,14 @@ function agenda() {
   if (s > 0) timer = setInterval(atualizaTudo, s * 1000);
 }
 document.getElementById("interval").addEventListener("change", agenda);
+document.getElementById("ufap").value = ufAp;
+document.getElementById("ufap").addEventListener("change", async e => {
+  ufAp = e.target.value;
+  try { localStorage.setItem("ufap2026", ufAp); } catch (x) {}
+  aplicaUfAp(); delete estado.presmg;
+  render(cardUf); renderResumo();
+  await carrega(cardUf); renderResumo();
+});
 document.getElementById("refresh").addEventListener("click", atualizaTudo);
 
 CARDS.forEach(render); renderResumo();
