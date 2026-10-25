@@ -56,8 +56,9 @@ function consulta(p) {
 // "Online" = sinal nos últimos 150 s (abas em segundo plano enviam menos sinais).
 const ONLINE_MS = 150_000;
 const ARQ = path.join(DATA_DIR, "visitas.json");
-const visitas = { desde: Date.now(), visitantes: {}, horas: {}, pico: { n: 0, em: 0 } };
+const visitas = { desde: Date.now(), visitantes: {}, horas: {}, pico: { n: 0, em: 0 }, cliques: {} };
 try { Object.assign(visitas, JSON.parse(fs.readFileSync(ARQ, "utf8"))); } catch (e) { /* primeira execução */ }
+visitas.cliques ||= {};
 let sujo = false;
 
 const diaBR = (t) => new Date(t).toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });                                   // AAAA-MM-DD
@@ -102,6 +103,17 @@ function registraPing(b, ip, pais) {
   sujo = true;
 }
 
+// Clique em banner de publicidade: conta por banner e quantas pessoas diferentes clicaram
+function registraClique(b) {
+  const banner = String(b.banner || "");
+  if (!/^[a-z0-9\-]{1,24}$/.test(banner)) return;
+  const agora = Date.now(), v = visitas.visitantes[String(b.id || "")];
+  if (v) { if (agora - (v.ultClique || 0) < 2000) return; v.ultClique = agora; v.cliques = (v.cliques || 0) + 1; }   // anti-flood
+  if (!(banner in visitas.cliques) && Object.keys(visitas.cliques).length >= 50) return;
+  visitas.cliques[banner] = (visitas.cliques[banner] || 0) + 1;
+  sujo = true;
+}
+
 function estatisticas() {
   const agora = Date.now(), hoje = diaBR(agora);
   const todos = Object.values(visitas.visitantes);
@@ -116,6 +128,7 @@ function estatisticas() {
     unicosHoje: todos.filter(v => v.dias.includes(hoje)).length,
     aberturasTotal: todos.reduce((s, v) => s + (v.aberturas || 0), 0),
     pico: visitas.pico,
+    cliques: { total: Object.values(visitas.cliques).reduce((s, n) => s + n, 0), pessoas: todos.filter(v => v.cliques > 0).length, porBanner: visitas.cliques },
     porAba: conta(online, v => v.aba), porTurno: conta(online, v => v.turno), porPais: conta(online, v => v.pais),
     horas,
     lista: online.sort((a, b) => a.sessao - b.sessao).map(v => ({ desde: v.sessao, aba: v.aba || "?", turno: v.turno || 1, pais: v.pais || "", visitas: v.aberturas || 0 })),
@@ -137,6 +150,7 @@ function conexaoSegura(req) {
   if (req.headers["x-forwarded-proto"] === "https" || /"scheme":"https"/.test(req.headers["cf-visitor"] || "")) return true;
   return !req.headers["x-forwarded-proto"] && /^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(req.socket.remoteAddress || "");   // acesso direto por localhost
 }
+const TIPOS_IMG = { ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
 const SEM_CACHE = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" };
 
 function lerCorpo(req, max = 2048) {
@@ -163,6 +177,23 @@ http.createServer(async (req, res) => {
       if (req.method !== "POST") { res.writeHead(405); return res.end(); }
       try { registraPing(JSON.parse(await lerCorpo(req)), ip, req.headers["cf-ipcountry"]); } catch (e) { /* sinal inválido: ignora */ }
       res.writeHead(204, SEM_CACHE); return res.end();
+    }
+
+    if (pathname === "/api/clique") {
+      if (req.method !== "POST") { res.writeHead(405); return res.end(); }
+      try { registraClique(JSON.parse(await lerCorpo(req))); } catch (e) { /* sinal inválido: ignora */ }
+      res.writeHead(204, SEM_CACHE); return res.end();
+    }
+
+    // Imagens dos banners (somente arquivos de public/banners)
+    if (pathname.startsWith("/banners/")) {
+      const nome = path.basename(pathname), ext = path.extname(nome).toLowerCase();
+      const arq = path.join(__dirname, "public", "banners", nome);
+      if (TIPOS_IMG[ext] && /^[A-Za-z0-9_\-]+\.[a-z]+$/.test(nome) && fs.existsSync(arq)) {
+        res.writeHead(200, { "Content-Type": TIPOS_IMG[ext], "Cache-Control": "public, max-age=3600" });
+        return res.end(fs.readFileSync(arq));
+      }
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("nao encontrado");
     }
 
     if (pathname === "/admin" || pathname === "/admin/" || pathname === "/admin/dados") {

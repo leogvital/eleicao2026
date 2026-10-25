@@ -104,12 +104,21 @@
   .aviso{background:#2a2410;border:1px solid var(--warn);border-radius:6px;padding:8px 10px;font-size:12px;margin:8px 0}
   .dnm small{display:block;color:var(--mut);font-size:11px}
   @media (max-width:900px){.dhead{display:none}.drow{grid-template-columns:1fr}}
+  .banner{max-width:800px;margin:12px auto 0;padding:0 20px}
+  .banner a{position:relative;display:block;border-radius:12px;overflow:hidden;border:1px solid var(--line);line-height:0}
+  .banner img{display:block;width:100%;height:auto;aspect-ratio:3/1;object-fit:cover;transition:opacity .35s}
+  .banner img.sai{opacity:0}
+  .banner .pub{position:absolute;top:6px;right:8px;font-size:10px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#cbd5e1;background:rgba(0,0,0,.5);padding:1px 6px;border-radius:4px}
+  @media (prefers-reduced-motion:reduce){.banner img{transition:none}}
   .pos{display:inline-block;min-width:34px;margin-right:6px;font-size:11px;font-weight:700;color:var(--bar)}
   .more{margin-top:8px;font-size:12px}
   footer{padding:10px 20px 24px;color:var(--mut);font-size:12px}
 </style>
 </head>
 <body>
+<aside class="banner" id="banner" aria-label="Publicidade" hidden>
+  <a id="bannerLink" href="https://zapuaitaki.com.br/" target="_blank" rel="noopener sponsored"><img id="bannerImg" alt="" width="1600" height="533"><span class="pub">Publicidade</span></a>
+</aside>
 <header>
   <h1>Apuração 2026 &middot; Brasil e estados <span class="tag w" id="turnoTag" hidden>2º turno</span></h1>
   <div class="tabs"><button id="tab-ap" class="on">Apuração</button><button id="tab-cp">Comparativo UF / Cidades</button><button id="tab-dq">Duelo presidencial</button><button id="tab-pf">&#9733; Perfis salvos</button></div>
@@ -974,6 +983,38 @@ async function ping(abertura) {
 }
 setInterval(() => ping(false), 30000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) ping(false); });
+
+// ===== Banner de publicidade (zapuaitaki.com.br): sorteado ao abrir e trocado por outro a cada 30 s =====
+const DESTINO_BANNER = "https://zapuaitaki.com.br/";
+const BANNERS = [
+  { id: "campanhas", alt: "U.Ai.TAKi Zap Marketing: campanhas de WhatsApp mais organizadas. Teste grátis, sem cartão de crédito." },
+  { id: "crm", alt: "U.Ai.TAKi Zap Marketing: CRM para acompanhar oportunidades. Explorar CRM." },
+  { id: "ia", alt: "U.Ai.TAKi Zap Marketing: atendimento por IA que ajuda. Ver recursos." },
+  { id: "api-oficial", alt: "U.Ai.TAKi Zap Marketing: WhatsApp no celular e API Oficial com o mesmo número. Conhecer." },
+  { id: "equipe", alt: "U.Ai.TAKi Zap Marketing: seu WhatsApp com equipe, IA e CRM. Saiba mais." },
+];
+let bannerAtual = -1;
+function mostraBanner(primeiro) {
+  let i;
+  do { i = Math.floor(Math.random() * BANNERS.length); } while (BANNERS.length > 1 && i === bannerAtual);   // nunca repete o banner que esta na tela
+  const b = BANNERS[i], img = document.getElementById("bannerImg"), a = document.getElementById("bannerLink");
+  const pre = new Image();                                                 // carrega antes de trocar: sem piscar nem imagem quebrada
+  pre.onload = () => {
+    const aplica = () => {
+      img.src = pre.src; img.alt = b.alt; bannerAtual = i; a.dataset.banner = b.id;
+      a.href = DESTINO_BANNER + "?utm_source=eleicao2026&utm_medium=banner&utm_content=" + b.id;
+      img.classList.remove("sai"); document.getElementById("banner").hidden = false;
+    };
+    if (primeiro || document.getElementById("banner").hidden) aplica(); else { img.classList.add("sai"); setTimeout(aplica, 350); }
+  };
+  pre.src = "/banners/" + b.id + ".jpg";                                     // se falhar, mantem o banner atual
+}
+mostraBanner(true);
+setInterval(() => mostraBanner(false), 30000);
+document.getElementById("bannerLink").addEventListener("click", e => {
+  const banner = e.currentTarget.dataset.banner; if (!banner) return;
+  try { fetch("/api/clique", { method: "POST", headers: { "Content-Type": "text/plain" }, keepalive: true, body: JSON.stringify({ id: idVisitante, banner }) }).catch(() => {}); } catch (x) {}
+});
 
 renderControles();
 let abaInicial = "ap"; try { abaInicial = localStorage.getItem("aba2026") || "ap"; } catch (e) {}

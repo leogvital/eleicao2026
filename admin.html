@@ -44,6 +44,7 @@
     <div class="card"><div class="mut">Pessoas no total</div><div class="big" id="total">-</div><div class="mut" id="desde">&nbsp;</div></div>
     <div class="card"><div class="mut">Aberturas do painel</div><div class="big" id="aberturas">-</div><div class="mut">a mesma pessoa pode abrir várias vezes</div></div>
     <div class="card"><div class="mut">Pico simultâneo</div><div class="big" id="pico">-</div><div class="mut" id="picoQuando">&nbsp;</div></div>
+    <div class="card"><div class="mut">Cliques nos banners</div><div class="big" id="cliques">-</div><div class="mut" id="cliquesPor">&nbsp;</div></div>
   </div>
 
   <div class="card">
@@ -76,6 +77,9 @@ async function carrega() {
     $("pico").textContent = fmt(d.pico.n);
     $("picoQuando").textContent = d.pico.n ? "em " + hm(d.pico.em) : "ainda sem registro";
     $("desde").textContent = "contagem desde " + hm(d.desde);
+    $("cliques").textContent = fmt(d.cliques.total);
+    const porBanner = Object.entries(d.cliques.porBanner).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`).join(" · ");
+    $("cliquesPor").textContent = d.cliques.total ? `${fmt(d.cliques.pessoas)} pessoa(s)` + (porBanner ? " · " + porBanner : "") : "ainda sem cliques";
     const max = Math.max(1, ...d.horas.map(h => h.unicos));
     $("horas").innerHTML = d.horas.map(h => `<div class="col" title="${h.dia.slice(8)}/${h.dia.slice(5, 7)} ${h.hora}h: ${h.unicos} pessoa(s)"><span>${h.unicos || ""}</span><i style="height:${(h.unicos / max) * 100}%"></i><b>${h.hora}</b></div>`).join("");
     const chips = [...Object.entries(d.porAba).map(([k, v]) => `${ABA[k] || k}: ${v}`), ...Object.entries(d.porTurno).map(([k, v]) => `${k}º turno: ${v}`), ...Object.entries(d.porPais).map(([k, v]) => `${k}: ${v}`)];

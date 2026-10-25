@@ -65,6 +65,10 @@ ADMIN_PASS=uma-senha-longa
 
 Sem `ADMIN_PASS`, o `/admin` fica desativado (404). Depois de editar o `.env`: `pm2 restart eleicao2026`. Cinco senhas erradas bloqueiam o IP por 15 minutos.
 
+## Banner de publicidade
+
+No topo do painel há um banner do <https://zapuaitaki.com.br/>, sorteado ao abrir e trocado por outro (nunca o mesmo em seguida) a cada 30 s, com a etiqueta "Publicidade". As imagens ficam em `public/banners/` (JPEG, 1600×533; ~120 KB cada) e a lista está em `BANNERS` no `public/index.html`. O link leva `utm_source=eleicao2026&utm_medium=banner&utm_content=<banner>`, e os cliques são contados (`POST /api/clique`) e aparecem no `/admin`. Para trocar ou acrescentar banners: coloque o `.jpg` na pasta e inclua `{ id, alt }` em `BANNERS`.
+
 ## Rodar no computador
 
 Windows: dê dois cliques em [`Iniciar-Dashboard.bat`](Iniciar-Dashboard.bat). Ele instala o Node.js (via winget) se necessário, encerra execuções anteriores e abre `http://localhost:8080`.
