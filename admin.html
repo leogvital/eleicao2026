@@ -30,6 +30,12 @@
   th{color:var(--mut);font-weight:400;border-top:0}
   .chip{display:inline-block;border:1px solid var(--line);border-radius:12px;padding:2px 9px;margin:2px 6px 2px 0;font-size:13px}
   .err{color:#f87171}
+  .st{display:flex;flex-wrap:wrap;gap:8px 24px;align-items:center}
+  .sel{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--mut);margin-right:8px;vertical-align:middle}
+  .sel.ok{background:var(--ac)}.sel.lento{background:var(--warn)}.sel.ruim{background:#f87171}
+  .stt{font-size:22px;font-weight:700}
+  .tira{display:flex;gap:2px;align-items:end;height:36px;margin-top:10px}
+  .tira i{flex:1;min-width:3px;border-radius:2px;background:var(--ac)}.tira i.f{background:#f87171}.tira i.l{background:var(--warn)}
 </style>
 </head>
 <body>
@@ -38,6 +44,18 @@
   <div class="mut"><span id="estado">carregando...</span></div>
 </header>
 <main>
+  <div class="card">
+    <h2>Conexão com o TSE</h2>
+    <div class="st"><div class="stt"><span class="sel" id="tseSel"></span><span id="tseTxt">verificando...</span></div><div class="mut" id="tseDet">&nbsp;</div></div>
+    <div class="cards" style="margin-top:12px">
+      <div><div class="mut">Último teste</div><div id="tseTeste">-</div></div>
+      <div><div class="mut">Última resposta boa</div><div id="tseOk">-</div></div>
+      <div><div class="mut">Últimos 10 min</div><div id="tseJan">-</div></div>
+      <div><div class="mut">Última falha</div><div id="tseFalha">nenhuma desde o início</div></div>
+    </div>
+    <div class="tira" id="tseTira" title="Últimas consultas ao TSE (verde = ok, amarelo = lenta, vermelho = falha)"></div>
+  </div>
+
   <div class="cards">
     <div class="card on"><div class="mut"><span class="dot"></span>Online agora</div><div class="big" id="online">-</div><div class="mut">sinal nos últimos 2,5 min</div></div>
     <div class="card"><div class="mut">Pessoas hoje</div><div class="big" id="hoje">-</div><div class="mut">visitantes únicos (horário de Brasília)</div></div>
@@ -65,6 +83,24 @@ const hm = (t) => new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao_P
 const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const $ = (id) => document.getElementById(id);
 
+function tseStatus(t, agora) {
+  const x = t.teste, sel = $("tseSel");
+  const idade = x ? agora - x.t : Infinity;
+  let cls = "ruim", txt = "Sem conexão com o TSE";
+  if (x && x.ok && idade < 90000) { cls = x.ms > 3000 ? "lento" : "ok"; txt = x.ms > 3000 ? "Conectado, porém lento" : "Conectado ao TSE"; }
+  else if (!x) { cls = ""; txt = "Verificando..."; }
+  else if (x.ok) { cls = "lento"; txt = "Teste desatualizado"; }
+  sel.className = "sel " + cls; $("tseTxt").textContent = txt; $("tseTxt").className = cls === "ruim" ? "err" : "";
+  $("tseDet").textContent = x ? (x.ok ? `resposta ${x.status} em ${fmt(x.ms)} ms · ${fmt(Math.round(x.bytes / 1024))} KB` : `falha: ${x.status ? "HTTP " + x.status : x.erro || "sem resposta"}`) : "";
+  $("tseTeste").textContent = x ? "há " + dur(agora - x.t) : "-";
+  $("tseOk").textContent = t.ultimoOk ? hm(t.ultimoOk) + " (há " + dur(agora - t.ultimoOk) + ")" : "nunca";
+  const j = t.janela;
+  $("tseJan").textContent = j.total ? `${fmt(j.total)} consultas · ${j.falhas} falha(s) · médio ${j.medioMs ?? "-"} ms · p95 ${j.p95Ms ?? "-"} ms` : "sem consultas";
+  $("tseFalha").textContent = t.ultimaFalha ? hm(t.ultimaFalha.t) + " · " + (t.ultimaFalha.status ? "HTTP " + t.ultimaFalha.status : t.ultimaFalha.erro || "sem resposta") : "nenhuma desde o início";
+  const maxMs = Math.max(1000, ...t.ultimos.map(u => u.ms));
+  $("tseTira").innerHTML = t.ultimos.map(u => `<i class="${!u.ok ? "f" : u.ms > 3000 ? "l" : ""}" style="height:${Math.max(12, Math.min(100, u.ms / maxMs * 100))}%" title="${hm(u.t)} · ${u.ok ? u.ms + " ms" : "falha"}"></i>`).join("");
+}
+
 async function carrega() {
   try {
     const r = await fetch("/admin/dados", { cache: "no-store", credentials: "same-origin" });
@@ -80,6 +116,7 @@ async function carrega() {
     $("cliques").textContent = fmt(d.cliques.total);
     const porBanner = Object.entries(d.cliques.porBanner).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`).join(" · ");
     $("cliquesPor").textContent = d.cliques.total ? `${fmt(d.cliques.pessoas)} pessoa(s)` + (porBanner ? " · " + porBanner : "") : "ainda sem cliques";
+    tseStatus(d.tse, d.agora);
     const max = Math.max(1, ...d.horas.map(h => h.unicos));
     $("horas").innerHTML = d.horas.map(h => `<div class="col" title="${h.dia.slice(8)}/${h.dia.slice(5, 7)} ${h.hora}h: ${h.unicos} pessoa(s)"><span>${h.unicos || ""}</span><i style="height:${(h.unicos / max) * 100}%"></i><b>${h.hora}</b></div>`).join("");
     const chips = [...Object.entries(d.porAba).map(([k, v]) => `${ABA[k] || k}: ${v}`), ...Object.entries(d.porTurno).map(([k, v]) => `${k}º turno: ${v}`), ...Object.entries(d.porPais).map(([k, v]) => `${k}: ${v}`)];

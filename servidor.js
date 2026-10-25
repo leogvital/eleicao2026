@@ -30,6 +30,15 @@ const CAMINHO_VALIDO = /^[A-Za-z0-9_\-]+(\/[A-Za-z0-9_\-]+)*\/[A-Za-z0-9_\-.]+\.
 const TTL_DADOS = 15_000, TTL_CONFIG = 3_600_000, TTL_ERRO = 5_000;
 const cache = new Map();   // caminho -> { ate, resp: Promise<{ status, corpo, ttl }> }
 
+// Estado da conexão com o TSE (aparece no /admin): últimas consultas reais dos visitantes + teste ativo a cada 30 s.
+const tse = { recentes: [], teste: null, ultimoOk: 0, ultimaFalha: null, desde: Date.now() };
+function registraTse(origem, caminho, status, ms, erro) {
+  const ok = status >= 200 && status < 300, t = Date.now();
+  tse.recentes.push({ t, ok, status, ms, origem });
+  if (tse.recentes.length > 200) tse.recentes.shift();
+  if (ok) tse.ultimoOk = t; else tse.ultimaFalha = { t, status, caminho, erro: erro || "" };
+}
+
 function consulta(p) {
   const agora = Date.now();
   const c = cache.get(p);
@@ -39,9 +48,13 @@ function consulta(p) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 9000);
     try {
+      const ini = Date.now();
       const r = await fetch(TSE + p, { headers: { "User-Agent": "Mozilla/5.0" }, signal: ctrl.signal });
-      return { status: r.status, corpo: Buffer.from(await r.arrayBuffer()), ttl: r.ok ? (p.includes("/config/") ? TTL_CONFIG : TTL_DADOS) : TTL_ERRO };
+      const corpo = Buffer.from(await r.arrayBuffer());
+      registraTse("visitante", p, r.status, Date.now() - ini);
+      return { status: r.status, corpo, ttl: r.ok ? (p.includes("/config/") ? TTL_CONFIG : TTL_DADOS) : TTL_ERRO };
     } catch (e) {
+      registraTse("visitante", p, e.name === "AbortError" ? 504 : 502, 9000, e.name === "AbortError" ? "tempo esgotado" : e.message);
       return { status: e.name === "AbortError" ? 504 : 502, corpo: Buffer.from("erro ao consultar o TSE: " + (e.name === "AbortError" ? "tempo esgotado" : e.message)), ttl: 0 };
     } finally { clearTimeout(timer); }
   })();
@@ -49,6 +62,34 @@ function consulta(p) {
   cache.set(p, entrada);
   resp.then(r => { if (r.ttl) entrada.ate = Date.now() + r.ttl; else cache.delete(p); });
   return resp;
+}
+
+// Teste ativo: busca o arquivo do Presidente (Brasil) direto no TSE, sem cache, a cada 30 s.
+const ARQ_TESTE = "6257/dados/br/br-c0001-e006257-u.jws";
+async function testaTse() {
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 9000), ini = Date.now();
+  try {
+    const r = await fetch(TSE + ARQ_TESTE, { headers: { "User-Agent": "Mozilla/5.0" }, signal: ctrl.signal });
+    const n = (await r.arrayBuffer()).byteLength, ms = Date.now() - ini;
+    tse.teste = { t: Date.now(), ok: r.ok && n > 0, status: r.status, ms, bytes: n };
+    registraTse("teste", ARQ_TESTE, r.status, ms);
+  } catch (e) {
+    const erro = e.name === "AbortError" ? "tempo esgotado" : (e.cause && e.cause.code) || e.message;
+    tse.teste = { t: Date.now(), ok: false, status: 0, ms: Date.now() - ini, erro };
+    registraTse("teste", ARQ_TESTE, 0, Date.now() - ini, erro);
+  } finally { clearTimeout(timer); }
+}
+testaTse(); setInterval(testaTse, 30_000).unref();
+
+function estadoTse() {
+  const agora = Date.now(), janela = tse.recentes.filter(x => agora - x.t <= 600_000), oks = janela.filter(x => x.ok);
+  const ms = oks.map(x => x.ms).sort((a, b) => a - b);
+  return {
+    teste: tse.teste, ultimoOk: tse.ultimoOk, ultimaFalha: tse.ultimaFalha,
+    janela: { total: janela.length, falhas: janela.length - oks.length, medioMs: ms.length ? Math.round(ms.reduce((a, b) => a + b, 0) / ms.length) : null, p95Ms: ms.length ? ms[Math.min(ms.length - 1, Math.floor(ms.length * 0.95))] : null },
+    ultimos: tse.recentes.slice(-30).map(x => ({ t: x.t, ok: x.ok, ms: x.ms })),
+    cacheItens: cache.size,
+  };
 }
 
 // ===================== Controle de acessos (anônimo) =====================
@@ -130,7 +171,7 @@ function estatisticas() {
     pico: visitas.pico,
     cliques: { total: Object.values(visitas.cliques).reduce((s, n) => s + n, 0), pessoas: todos.filter(v => v.cliques > 0).length, porBanner: visitas.cliques },
     porAba: conta(online, v => v.aba), porTurno: conta(online, v => v.turno), porPais: conta(online, v => v.pais),
-    horas,
+    horas, tse: estadoTse(),
     lista: online.sort((a, b) => a.sessao - b.sessao).map(v => ({ desde: v.sessao, aba: v.aba || "?", turno: v.turno || 1, pais: v.pais || "", visitas: v.aberturas || 0 })),
   };
 }
