@@ -126,7 +126,7 @@
   </div>
 </header>
 <div id="view-ap">
-<div class="ctl" style="padding:14px 20px 0;margin:0"><label>Estado (Presidente) <select id="ufap"><option value="ac">AC - Acre</option><option value="al">AL - Alagoas</option><option value="ap">AP - Amapá</option><option value="am">AM - Amazonas</option><option value="ba">BA - Bahia</option><option value="ce">CE - Ceará</option><option value="df">DF - Distrito Federal</option><option value="es">ES - Espírito Santo</option><option value="go">GO - Goiás</option><option value="ma">MA - Maranhão</option><option value="mt">MT - Mato Grosso</option><option value="ms">MS - Mato Grosso do Sul</option><option value="mg">MG - Minas Gerais</option><option value="pa">PA - Pará</option><option value="pb">PB - Paraíba</option><option value="pr">PR - Paraná</option><option value="pe">PE - Pernambuco</option><option value="pi">PI - Piauí</option><option value="rj">RJ - Rio de Janeiro</option><option value="rn">RN - Rio Grande do Norte</option><option value="rs">RS - Rio Grande do Sul</option><option value="ro">RO - Rondônia</option><option value="rr">RR - Roraima</option><option value="sc">SC - Santa Catarina</option><option value="sp">SP - São Paulo</option><option value="se">SE - Sergipe</option><option value="to">TO - Tocantins</option><option value="zz">ZZ - Exterior</option></select></label><span>Escolha o estado para acompanhar o Presidente. No 2º turno esta aba mostra só o Presidente.</span></div>
+<div class="ctl" style="padding:14px 20px 0;margin:0"><label>Estado <select id="ufap"><option value="ac">AC - Acre</option><option value="al">AL - Alagoas</option><option value="ap">AP - Amapá</option><option value="am">AM - Amazonas</option><option value="ba">BA - Bahia</option><option value="ce">CE - Ceará</option><option value="df">DF - Distrito Federal</option><option value="es">ES - Espírito Santo</option><option value="go">GO - Goiás</option><option value="ma">MA - Maranhão</option><option value="mt">MT - Mato Grosso</option><option value="ms">MS - Mato Grosso do Sul</option><option value="mg">MG - Minas Gerais</option><option value="pa">PA - Pará</option><option value="pb">PB - Paraíba</option><option value="pr">PR - Paraná</option><option value="pe">PE - Pernambuco</option><option value="pi">PI - Piauí</option><option value="rj">RJ - Rio de Janeiro</option><option value="rn">RN - Rio Grande do Norte</option><option value="rs">RS - Rio Grande do Sul</option><option value="ro">RO - Rondônia</option><option value="rr">RR - Roraima</option><option value="sc">SC - Santa Catarina</option><option value="sp">SP - São Paulo</option><option value="se">SE - Sergipe</option><option value="to">TO - Tocantins</option><option value="zz">ZZ - Exterior</option></select></label><span>Escolha o estado: no 1º turno muda Presidente, Governador, Senador, Deputado Federal e Deputado Estadual; no 2º turno, só o Presidente.</span></div>
 <div class="resumo" id="resumo"></div>
 <div class="grid" id="grid"></div>
 </div>
@@ -203,7 +203,17 @@ const CARDS = [
 const UF_AP = {"ac":"Acre","al":"Alagoas","ap":"Amapá","am":"Amazonas","ba":"Bahia","ce":"Ceará","df":"Distrito Federal","es":"Espírito Santo","go":"Goiás","ma":"Maranhão","mt":"Mato Grosso","ms":"Mato Grosso do Sul","mg":"Minas Gerais","pa":"Pará","pb":"Paraíba","pr":"Paraná","pe":"Pernambuco","pi":"Piauí","rj":"Rio de Janeiro","rn":"Rio Grande do Norte","rs":"Rio Grande do Sul","ro":"Rondônia","rr":"Roraima","sc":"Santa Catarina","sp":"São Paulo","se":"Sergipe","to":"Tocantins","zz":"Exterior"};
 let ufAp = "mg"; try { const v = localStorage.getItem("ufap2026"); if (v && UF_AP[v]) ufAp = v; } catch (e) {}
 const cardUf = CARDS.find(c => c.id === "presmg");
-function aplicaUfAp() { cardUf.uf = ufAp; cardUf.titulo = "Presidente da República - " + UF_AP[ufAp]; }
+const NOME_CARD = { presmg: "Presidente da República", gov: "Governador", sen: "Senador", df: "Deputado Federal", de: "Deputado Estadual" };
+const CARGO_CARD = { presmg: 1, gov: 3, sen: 5, df: 6, de: 7 };
+const cardsUf = CARDS.filter(c => c.id in NOME_CARD);
+function aplicaUfAp() {
+  for (const c of cardsUf) {
+    const distrital = c.id === "de" && ufAp === "df";                  // no DF o cargo estadual e Deputado Distrital (cargo 8)
+    c.uf = ufAp;
+    c.cargo = distrital ? 8 : CARGO_CARD[c.id];
+    c.titulo = (distrital ? "Deputado Distrital" : NOME_CARD[c.id]) + " - " + UF_AP[ufAp];
+  }
+}
 aplicaUfAp();
 // No 2o turno so o Presidente aparece na aba Apuracao
 const cardVisivel = (c) => turno === 1 || c.cargo === 1;
@@ -263,6 +273,7 @@ function normaliza(j) {
     urnas: num(s.pst),
     secoes: num(s.st), totalSecoes: num(s.ts),
     validos: num((j.v || {}).vv),
+    vagas: num(cargo.nv),
     // comparecimento: % e abstencao sao sobre o eleitorado das secoes ja apuradas (est)
     comp: { eleitorado: num((j.e || {}).te), apurado: num((j.e || {}).est), comp: num((j.e || {}).c), pcomp: num((j.e || {}).pc),
             abst: num((j.e || {}).a), pabst: num((j.e || {}).pa) },
@@ -316,7 +327,8 @@ function render(c) {
   el.hidden = !cardVisivel(c);
   if (el.hidden) return;
   const s = estado[c.id] || {};
-  let html = `<h2>${esc(c.titulo)}${sufTurno()}</h2>`;
+  const vagas = s.dados && s.dados.vagas > 1 ? ` (${s.dados.vagas} vagas)` : "";
+  let html = `<h2>${esc(c.titulo)}${vagas}${sufTurno()}</h2>`;
   if (s.nota) html += `<div class="vt">${esc(s.nota)}</div>`;
   if (s.dados) {
     const d = s.dados;
@@ -344,7 +356,7 @@ async function carrega(c) {
   if (!temTurno(c.cargo)) { estado[c.id] = { nota: SEM_2T }; render(c); return; }
   try {
     const r = await fetch(url(c), { cache: "no-store" });
-    if (r.status === 404 && turno === 2) { estado[c.id] = { nota: "Esta UF não tem 2º turno para este cargo: o candidato foi eleito no 1º turno." }; render(c); return; }
+    if (r.status === 404) { estado[c.id] = { nota: turno === 2 ? "Esta UF não tem 2º turno para este cargo: o candidato foi eleito no 1º turno." : c.uf === "zz" ? "O Exterior só tem votos para Presidente." : "Sem dados deste cargo para " + UF_AP[c.uf] + "." }; render(c); return; }
     if (!r.ok) throw new Error("HTTP " + r.status);
     const d = normaliza(decodificaJws(await r.text()));
     if (!d.cands.length) throw new Error("arquivo sem candidatos");
@@ -392,9 +404,10 @@ document.getElementById("ufap").value = ufAp;
 document.getElementById("ufap").addEventListener("change", async e => {
   ufAp = e.target.value;
   try { localStorage.setItem("ufap2026", ufAp); } catch (x) {}
-  aplicaUfAp(); delete estado.presmg;
-  render(cardUf); renderResumo();
-  await carrega(cardUf); renderResumo();
+  aplicaUfAp();
+  for (const c of cardsUf) delete estado[c.id];
+  CARDS.forEach(render); renderResumo();
+  await Promise.all(cardsUf.map(carrega)); renderResumo();
 });
 document.getElementById("refresh").addEventListener("click", atualizaTudo);
 
