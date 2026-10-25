@@ -67,7 +67,7 @@ Sem `ADMIN_PASS`, o `/admin` fica desativado (404). Depois de editar o `.env`: `
 
 ## Banner de publicidade
 
-No topo do painel há um banner do <https://zapuaitaki.com.br/>, sorteado ao abrir e trocado por outro (nunca o mesmo em seguida) a cada 30 s, com a etiqueta "Publicidade". As imagens ficam em `public/banners/` (JPEG, 1600×533; ~120 KB cada) e a lista está em `BANNERS` no `public/index.html`. O link leva `utm_source=eleicao2026&utm_medium=banner&utm_content=<banner>`, e os cliques são contados (`POST /api/clique`) e aparecem no `/admin`. Para trocar ou acrescentar banners: coloque o `.jpg` na pasta e inclua `{ id, alt }` em `BANNERS`.
+No topo do painel há um banner do <https://zapuaitaki.com.br/>, sorteado ao abrir e trocado por outro (nunca o mesmo em seguida) a cada 30 s, com a etiqueta "Publicidade". As imagens ficam em `public/banners/` (PNG, 980×180; ~70 KB cada) e a lista está em `BANNERS` no `public/index.html`. O link leva `utm_source=eleicao2026&utm_medium=banner&utm_content=<banner>`, e os cliques são contados (`POST /api/clique`) e aparecem no `/admin`. Para trocar ou acrescentar banners: coloque o `.png` (980×180) na pasta e inclua `{ id, alt }` em `BANNERS`.
 
 ## Rodar no computador
 

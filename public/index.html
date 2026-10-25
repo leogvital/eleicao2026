@@ -104,9 +104,9 @@
   .aviso{background:#2a2410;border:1px solid var(--warn);border-radius:6px;padding:8px 10px;font-size:12px;margin:8px 0}
   .dnm small{display:block;color:var(--mut);font-size:11px}
   @media (max-width:900px){.dhead{display:none}.drow{grid-template-columns:1fr}}
-  .banner{max-width:800px;margin:12px auto 0;padding:0 20px}
+  .banner{max-width:1020px;margin:12px auto 0;padding:0 20px}
   .banner a{position:relative;display:block;border-radius:12px;overflow:hidden;border:1px solid var(--line);line-height:0}
-  .banner img{display:block;width:100%;height:auto;aspect-ratio:3/1;object-fit:cover;transition:opacity .35s}
+  .banner img{display:block;width:100%;height:auto;aspect-ratio:49/9;object-fit:cover;transition:opacity .35s}
   .banner img.sai{opacity:0}
   .banner .pub{position:absolute;top:6px;right:8px;font-size:10px;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;color:#cbd5e1;background:rgba(0,0,0,.5);padding:1px 6px;border-radius:4px}
   @media (prefers-reduced-motion:reduce){.banner img{transition:none}}
@@ -117,7 +117,7 @@
 </head>
 <body>
 <aside class="banner" id="banner" aria-label="Publicidade" hidden>
-  <a id="bannerLink" href="https://zapuaitaki.com.br/" target="_blank" rel="noopener sponsored"><img id="bannerImg" alt="" width="1600" height="533"><span class="pub">Publicidade</span></a>
+  <a id="bannerLink" href="https://zapuaitaki.com.br/" target="_blank" rel="noopener sponsored"><img id="bannerImg" alt="" width="980" height="180"><span class="pub">Publicidade</span></a>
 </aside>
 <header>
   <h1>Apuração 2026 &middot; Brasil e estados <span class="tag w" id="turnoTag" hidden>2º turno</span></h1>
@@ -987,11 +987,11 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) ping
 // ===== Banner de publicidade (zapuaitaki.com.br): sorteado ao abrir e trocado por outro a cada 30 s =====
 const DESTINO_BANNER = "https://zapuaitaki.com.br/";
 const BANNERS = [
-  { id: "campanhas", alt: "U.Ai.TAKi Zap Marketing: campanhas de WhatsApp mais organizadas. Teste grátis, sem cartão de crédito." },
-  { id: "crm", alt: "U.Ai.TAKi Zap Marketing: CRM para acompanhar oportunidades. Explorar CRM." },
-  { id: "ia", alt: "U.Ai.TAKi Zap Marketing: atendimento por IA que ajuda. Ver recursos." },
-  { id: "api-oficial", alt: "U.Ai.TAKi Zap Marketing: WhatsApp no celular e API Oficial com o mesmo número. Conhecer." },
-  { id: "equipe", alt: "U.Ai.TAKi Zap Marketing: seu WhatsApp com equipe, IA e CRM. Saiba mais." },
+  { id: "campanhas", alt: "U.Ai.TAKi Zap Marketing: campanhas de WhatsApp mais organizadas. Segmente contatos e acompanhe resultados. Teste grátis." },
+  { id: "crm", alt: "U.Ai.TAKi Zap Marketing: CRM para acompanhar oportunidades. Organize etapas, contatos e próximos passos. Explorar CRM." },
+  { id: "ia", alt: "U.Ai.TAKi Zap Marketing: atendimento por IA que ajuda sua equipe. Respostas baseadas nas informações do negócio. Ver recursos." },
+  { id: "api-oficial", alt: "U.Ai.TAKi Zap Marketing: WhatsApp no celular e API Oficial Meta, mesmo número para contas elegíveis. Conhecer." },
+  { id: "equipe", alt: "U.Ai.TAKi Zap Marketing: seu WhatsApp com equipe, IA e CRM integrados. Atendimento e vendas no mesmo painel. Saiba mais." },
 ];
 let bannerAtual = -1;
 function mostraBanner(primeiro) {
@@ -1007,7 +1007,7 @@ function mostraBanner(primeiro) {
     };
     if (primeiro || document.getElementById("banner").hidden) aplica(); else { img.classList.add("sai"); setTimeout(aplica, 350); }
   };
-  pre.src = "/banners/" + b.id + ".jpg";                                     // se falhar, mantem o banner atual
+  pre.src = "/banners/" + b.id + ".png?v=2";                                     // se falhar, mantem o banner atual
 }
 mostraBanner(true);
 setInterval(() => mostraBanner(false), 30000);
