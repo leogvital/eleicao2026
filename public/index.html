@@ -199,7 +199,8 @@ const CARDS = [
 ];
 
 // ===== Turno (1 ou 2): no 2o turno o TSE usa outro codigo de eleicao e so existem Presidente e Governador =====
-let turno = 1; try { turno = +localStorage.getItem("turno2026") === 2 ? 2 : 1; } catch (e) {}
+// Padrao ao abrir: 2o turno. A troca pelo seletor vale so enquanto a aba estiver aberta (sessionStorage): ao abrir de novo volta ao 2o turno.
+let turno = 2; try { if (sessionStorage.getItem("turno2026") === "1") turno = 1; } catch (e) {}
 const ELE_T2 = { "6257": "6258", "6259": "6260" };                    // codigo do 1o turno -> do 2o turno
 const eleT = (ele) => turno === 2 ? (ELE_T2[String(ele)] || String(ele)) : String(ele);
 const temTurno = (cargo) => turno === 1 || cargo === 1 || cargo === 3;
@@ -903,7 +904,7 @@ function renderPerfis() {
 const GOV_2T = ["ac", "am", "df", "es", "rn", "to"];
 function mudaTurno(t) {
   turno = t === 2 ? 2 : 1;
-  try { localStorage.setItem("turno2026", String(turno)); } catch (e) {}
+  try { sessionStorage.setItem("turno2026", String(turno)); } catch (e) {}
   for (const o of [estado, cmpDados, duelo.dados, duelo.erro]) for (const k of Object.keys(o)) delete o[k];
   if (turno === 2 && !["pres", "gov"].includes(cmp.cargo)) cmp.cargo = "pres";
   salvaCmp();
