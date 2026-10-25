@@ -577,6 +577,7 @@ function mostraAba(qual) {
     document.getElementById(view).hidden = id !== qual;
     document.getElementById(aba).classList.toggle("on", id === qual);
   }
+  window.abaAtual = qual;
   try { localStorage.setItem("aba2026", qual); } catch (e) {}
   if (qual === "comp") { renderControles(); renderComp(); atualizaComp(); }
   if (qual === "duelo") { renderDuelo(); atualizaDuelo(); }
@@ -953,9 +954,31 @@ document.getElementById("turno").value = String(turno);
 document.getElementById("turnoTag").hidden = turno !== 2;
 if (turno === 2 && !["pres", "gov"].includes(cmp.cargo)) cmp.cargo = "pres";
 
+// ===== Controle de acessos (anonimo): codigo aleatorio do navegador, enviado ao proprio servidor a cada 30 s =====
+const idVisitante = (() => {
+  const novo = () => (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(16).slice(2) + Date.now().toString(16)).replace(/-/g, "");
+  try {
+    let v = localStorage.getItem("vid2026");
+    if (!v || !/^[A-Za-z0-9]{16,64}$/.test(v)) { v = novo(); localStorage.setItem("vid2026", v); }
+    return v;
+  } catch (e) { return novo(); }
+})();
+let pingAtivo = true;
+async function ping(abertura) {
+  if (!pingAtivo) return;
+  try {
+    const r = await fetch("/api/ping", { method: "POST", headers: { "Content-Type": "text/plain" }, keepalive: true,
+      body: JSON.stringify({ id: idVisitante, aba: window.abaAtual || "ap", turno, abertura: !!abertura }) });
+    if (!r.ok) pingAtivo = false;           // servidor sem contagem: para de tentar
+  } catch (e) { /* sem rede: tenta no proximo ciclo */ }
+}
+setInterval(() => ping(false), 30000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) ping(false); });
+
 renderControles();
 let abaInicial = "ap"; try { abaInicial = localStorage.getItem("aba2026") || "ap"; } catch (e) {}
 mostraAba(abaInicial);
+ping(true);
 </script>
 </body>
 </html>

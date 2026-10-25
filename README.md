@@ -52,6 +52,19 @@ Atualizar: `cd /var/eleicao2026 && git pull && pm2 restart eleicao2026`.
 
 **Cloudflare / DNS.** O nginx só atende pelo nome em `server_name` (hoje `eleicao2026.ddns.net`); para outro nome, acrescente-o nos dois blocos. A Cloudflare só faz proxy de nomes que estão em uma zona dela: `*.ddns.net` pertence ao No-IP e não pode ser proxied. Use um nome do seu domínio na Cloudflare (registro **A** para o IP do servidor, ou **CNAME** para o nome do No-IP, com a nuvem laranja) e cadastre esse nome em `server_name`. O bloco 443 usa o certificado Let's Encrypt de `eleicao2026.ddns.net` (emitido com `certbot certonly --webroot -w /var/eleicao2026/certbot-webroot -d <nome> --deploy-hook "systemctl reload nginx"`, renovação automática pelo `certbot.timer`). Ele vale para a Cloudflare em **Full (strict)** quando o nome acessado é o do certificado; para outro nome, emita um certificado para ele ou use um Origin Certificate da Cloudflare.
 
+## Controle de acessos (só no servidor próprio)
+
+O painel conta quantas pessoas acessaram e quantas estão online. A contagem é **anônima**: cada navegador gera um código aleatório (guardado em `localStorage`) e o envia ao próprio servidor a cada 30 s em `POST /api/ping`; não se guarda IP, nome nem outro dado pessoal (só o país, se a Cloudflare informar). "Online" = sinal nos últimos 150 s. Os dados ficam em `data/visitas.json` (ignorado pelo git).
+
+O painel de controle fica em **`/admin`** (usuário e senha, só por HTTPS; `http://` é redirecionado). Mostra online agora, pessoas hoje (horário de Brasília), pessoas no total, aberturas, pico simultâneo, pessoas por hora nas últimas 24 h e quem está online (aba, turno e país). Defina as credenciais em `.env` na pasta do servidor (arquivo ignorado pelo git):
+
+```
+ADMIN_USER=admin
+ADMIN_PASS=uma-senha-longa
+```
+
+Sem `ADMIN_PASS`, o `/admin` fica desativado (404). Depois de editar o `.env`: `pm2 restart eleicao2026`. Cinco senhas erradas bloqueiam o IP por 15 minutos.
+
 ## Rodar no computador
 
 Windows: dê dois cliques em [`Iniciar-Dashboard.bat`](Iniciar-Dashboard.bat). Ele instala o Node.js (via winget) se necessário, encerra execuções anteriores e abre `http://localhost:8080`.

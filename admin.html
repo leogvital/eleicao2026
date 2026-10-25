@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Acessos - Eleição 2026</title>
+<style>
+  :root{--bg:#0f1420;--card:#171e2e;--line:#27304a;--tx:#e8ecf5;--mut:#8b96b3;--ac:#4ade80;--bar:#3b82f6;--warn:#fbbf24}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,Segoe UI,Roboto,sans-serif}
+  header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
+  h1{font-size:18px;margin:0}h2{font-size:15px;margin:0 0 10px}
+  .mut{color:var(--mut);font-size:12px}
+  main{padding:16px 20px;display:grid;gap:16px;max-width:1200px;margin:0 auto}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .big{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+  .on .big{color:var(--ac)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ac);margin-right:6px;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:p 1.8s infinite}
+  @keyframes p{70%{box-shadow:0 0 0 8px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+  .barras{display:grid;grid-template-columns:repeat(24,1fr);gap:4px;align-items:end;height:150px;margin-top:6px}
+  .col{display:flex;flex-direction:column;justify-content:flex-end;height:100%;align-items:stretch;min-width:0}
+  .col i{display:block;background:var(--bar);border-radius:3px 3px 0 0;min-height:2px}
+  .col b{font-size:11px;font-weight:400;color:var(--mut);text-align:center;margin-top:4px;font-variant-numeric:tabular-nums}
+  .col span{font-size:11px;text-align:center;color:var(--tx);font-variant-numeric:tabular-nums;min-height:15px}
+  .dois{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th,td{text-align:left;padding:6px 8px;border-top:1px solid var(--line);font-size:13px}
+  th{color:var(--mut);font-weight:400;border-top:0}
+  .chip{display:inline-block;border:1px solid var(--line);border-radius:12px;padding:2px 9px;margin:2px 6px 2px 0;font-size:13px}
+  .err{color:#f87171}
+</style>
+</head>
+<body>
+<header>
+  <h1>Acessos &middot; Eleição 2026</h1>
+  <div class="mut"><span id="estado">carregando...</span></div>
+</header>
+<main>
+  <div class="cards">
+    <div class="card on"><div class="mut"><span class="dot"></span>Online agora</div><div class="big" id="online">-</div><div class="mut">sinal nos últimos 2,5 min</div></div>
+    <div class="card"><div class="mut">Pessoas hoje</div><div class="big" id="hoje">-</div><div class="mut">visitantes únicos (horário de Brasília)</div></div>
+    <div class="card"><div class="mut">Pessoas no total</div><div class="big" id="total">-</div><div class="mut" id="desde">&nbsp;</div></div>
+    <div class="card"><div class="mut">Aberturas do painel</div><div class="big" id="aberturas">-</div><div class="mut">a mesma pessoa pode abrir várias vezes</div></div>
+    <div class="card"><div class="mut">Pico simultâneo</div><div class="big" id="pico">-</div><div class="mut" id="picoQuando">&nbsp;</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Pessoas por hora (últimas 24 h)</h2>
+    <div class="barras" id="horas"></div>
+  </div>
+
+  <div class="dois">
+    <div class="card"><h2>Quem está online</h2><div id="chips" class="mut">-</div>
+      <table><thead><tr><th>Conectado há</th><th>Aba</th><th>Turno</th><th>País</th></tr></thead><tbody id="lista"></tbody></table></div>
+  </div>
+</main>
+<script>
+const ABA = { ap: "Apuração", comp: "Comparativo", duelo: "Duelo presidencial", perf: "Perfis salvos" };
+const fmt = (n) => Number(n).toLocaleString("pt-BR");
+const dur = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); if (s < 60) return s + " s"; const m = Math.floor(s / 60); return m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min"; };
+const hm = (t) => new Date(t).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const $ = (id) => document.getElementById(id);
+
+async function carrega() {
+  try {
+    const r = await fetch("/admin/dados", { cache: "no-store", credentials: "same-origin" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    $("online").textContent = fmt(d.online);
+    $("hoje").textContent = fmt(d.unicosHoje);
+    $("total").textContent = fmt(d.unicosTotal);
+    $("aberturas").textContent = fmt(d.aberturasTotal);
+    $("pico").textContent = fmt(d.pico.n);
+    $("picoQuando").textContent = d.pico.n ? "em " + hm(d.pico.em) : "ainda sem registro";
+    $("desde").textContent = "contagem desde " + hm(d.desde);
+    const max = Math.max(1, ...d.horas.map(h => h.unicos));
+    $("horas").innerHTML = d.horas.map(h => `<div class="col" title="${h.dia.slice(8)}/${h.dia.slice(5, 7)} ${h.hora}h: ${h.unicos} pessoa(s)"><span>${h.unicos || ""}</span><i style="height:${(h.unicos / max) * 100}%"></i><b>${h.hora}</b></div>`).join("");
+    const chips = [...Object.entries(d.porAba).map(([k, v]) => `${ABA[k] || k}: ${v}`), ...Object.entries(d.porTurno).map(([k, v]) => `${k}º turno: ${v}`), ...Object.entries(d.porPais).map(([k, v]) => `${k}: ${v}`)];
+    $("chips").innerHTML = chips.length ? chips.map(c => `<span class="chip">${esc(c)}</span>`).join("") : "ninguém online no momento";
+    $("lista").innerHTML = d.lista.map(p => `<tr><td>${dur(d.agora - p.desde)}</td><td>${esc(ABA[p.aba] || p.aba)}</td><td>${p.turno}º</td><td>${esc(p.pais || "-")}</td></tr>`).join("") || '<tr><td colspan="4" class="mut">ninguém online</td></tr>';
+    $("estado").textContent = "atualizado às " + new Date().toLocaleTimeString("pt-BR") + " · a cada 10 s";
+    $("estado").className = "";
+  } catch (e) { $("estado").textContent = "falha ao atualizar: " + e.message; $("estado").className = "err"; }
+}
+carrega(); setInterval(carrega, 10000);
+</script>
+</body>
+</html>

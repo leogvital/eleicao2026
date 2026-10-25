@@ -3,6 +3,7 @@ node_modules/
 .env*
 *.zip
 *.log
+data/
 
 # versão antiga (favorito/bookmarklet), substituída por este painel
 dashboard-tse-console.js
