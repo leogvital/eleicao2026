@@ -237,7 +237,7 @@ http.createServer(async (req, res) => {
       res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("nao encontrado");
     }
 
-    if (pathname === "/admin" || pathname === "/admin/" || pathname === "/admin/dados") {
+    if (pathname === "/admin" || pathname === "/admin/" || pathname === "/admin/dados" || pathname === "/auditoria" || pathname === "/auditoria/") {
       if (!ADMIN_PASS) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("nao encontrado"); }
       if (!conexaoSegura(req)) { res.writeHead(301, { Location: "https://" + (req.headers.host || "") + req.url, ...SEM_CACHE }); return res.end(); }
       const f = falhas.get(ip), agora = Date.now();
@@ -253,6 +253,12 @@ http.createServer(async (req, res) => {
       }
       falhas.delete(ip);
       if (pathname === "/admin/dados") { res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", ...SEM_CACHE }); return res.end(JSON.stringify(estatisticas())); }
+      if (pathname.startsWith("/auditoria")) {   // relatório de auditoria de seções (gerado em analise/, copiado para DATA_DIR/auditoria/); mesma senha do /admin
+        const rel = path.join(DATA_DIR, "auditoria", "relatorio.html");
+        if (!fs.existsSync(rel)) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("relatorio ainda nao publicado"); }
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Robots-Tag": "noindex", ...SEM_CACHE });
+        return res.end(fs.readFileSync(rel));
+      }
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", ...SEM_CACHE });
       return res.end(fs.readFileSync(path.join(__dirname, "admin.html")));
     }
